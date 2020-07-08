@@ -1,5 +1,8 @@
 const User = require("../models/user");
 const jwt = require("jsonwebtoken");
+const expressJwt = require("express-jwt");
+const _ = require("lodash");
+
 const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
@@ -93,7 +96,119 @@ exports.signin = (req, res) => {
 		const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
 			expiresIn: "7d",
 		});
-		const { _id, name, email, role } = user;
-		return res.json({ token, user });
+		const { _id, name, email, role, picture } = user;
+		const userData = { _id, name, email, role, picture };
+		return res.json({ token, user: userData });
+		jhkjhljkl;
 	});
+};
+
+exports.requireSignin = expressJwt({
+	secret: process.env.JWT_SECRET,
+});
+
+exports.adminMiddleware = (req, res, next) => {
+	User.findById({ _id: req.user._id }).exec((err, user) => {
+		if (err || !user) {
+			return res.status(400).json({
+				error: "User not found",
+			});
+		}
+
+		if (user.role !== "admin") {
+			return res.status(400).json({
+				error: "Admin resource. Access denied.",
+			});
+		}
+
+		req.profile = user;
+		next();
+	});
+};
+
+exports.forgotPassword = (req, res) => {
+	const { email } = req.body;
+
+	User.findOne({ email }, (err, user) => {
+		if (err || !user) {
+			return res.status(400).json({
+				error: "User not found",
+			});
+		}
+
+		const token = jwt.sign({ _id: user._id }, process.env.JWT_RESET_PASSWORD, {
+			expiresIn: "10m",
+		});
+
+		return user.updateOne({ resetPasswordLink: token }, (err, success) => {
+			if (err) {
+				return res.status(400).json({
+					error: "DB error",
+				});
+			} else {
+				const emailData = {
+					from: process.env.EMAIL_FROM,
+					to: email,
+					subject: `Password reset link`,
+					html: `
+			<h1>please use the following link to reset your passsword</h1>
+			<p>${process.env.CLIENT_URL}/password/reset/${token}</p>
+			<hr/>
+			<p>this email containt sensitive informaion</p>
+			`,
+				};
+
+				sgMail
+					.send(emailData)
+					.then((sent) => {
+						return res.json({
+							message: `email has been sent to ${email}, please follow the instruction to activate your account`,
+						});
+					})
+					.catch((err) => console.log(err.response.body));
+			}
+		});
+	});
+};
+
+exports.resetPassword = (req, res) => {
+	const { resetPasswordLink, newPassword } = req.body;
+
+	if (resetPasswordLink) {
+		jwt.verify(
+			resetPasswordLink,
+			process.env.JWT_RESET_PASSWORD,
+			(err, decoded) => {
+				if (err) {
+					return res.status(400).json({
+						error: "Expired link, try again",
+					});
+				}
+
+				User.findOne({ resetPasswordLink }, (err, user) => {
+					if (err) {
+						return res.status(400).json({
+							error: "Something went wrong, try again",
+						});
+					}
+
+					const updatedFields = {
+						passsword: newPassword,
+						resetPasswordLink: "",
+					};
+
+					user = _.extend(user, updatedFields);
+					user.save((err, result) => {
+						if (err) {
+							return res.status(400).json({
+								error: "Save to DB Error",
+							});
+						}
+
+						res.json({ message: "great,log in with new password" });
+					});
+				});
+			}
+		);
+	}
 };

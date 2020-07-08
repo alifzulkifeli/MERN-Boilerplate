@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Redirect } from "react-router-dom";
 import Layout from "./../core/Layout";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { isAuth } from "./helpers";
 
 const Signup = () => {
 	const [values, setValues] = useState({
@@ -20,22 +21,32 @@ const Signup = () => {
 	};
 
 	const handleSubmit = (event) => {
-		event.preventDefault();
-		setValues({ ...values, buttonText: "Creating account" });
-		axios({
-			method: "POST",
-			url: `${process.env.REACT_APP_API}/signup`,
-			data: { name, email, password },
-		})
-			.then((response) => {
-				console.log(response);
-				setValues({ ...values, name: "", email: "", password: "" });
-				toast.success(response.data.message);
+		if (password !== confirmPassword) {
+			toast.error("password did not match");
+		} else {
+			event.preventDefault();
+			setValues({ ...values, buttonText: "Creating account" });
+			axios({
+				method: "POST",
+				url: `${process.env.REACT_APP_API}/signup`,
+				data: { name, email, password, confirmPassword },
 			})
-			.catch((error) => {
-				console.log(error.response.data);
-				toast.error(error.response.data.error);
-			});
+				.then((response) => {
+					console.log(response);
+					setValues({
+						...values,
+						name: "",
+						email: "",
+						password: "",
+						confirmPassword: "",
+					});
+					toast.success(response.data.message);
+				})
+				.catch((error) => {
+					console.log(error.response.data);
+					toast.error(error.response.data.error);
+				});
+		}
 	};
 
 	const signupForm = () => (
@@ -73,9 +84,9 @@ const Signup = () => {
 					<input
 						type="password"
 						className="block border border-grey-light w-full p-3 rounded mb-4"
-						name="confirm_password"
+						name="confirmPassword"
 						placeholder="Confirm Password"
-						onChange={handleChange("confirm-password")}
+						onChange={handleChange("confirmPassword")}
 						value={confirmPassword}
 					/>
 
@@ -109,7 +120,7 @@ const Signup = () => {
 					Already have an account?
 					<Link
 						className="no-underline border-b border-blue text-blue"
-						to="../login/"
+						to="../signin"
 					>
 						<span className=" text-blue-500"> Log in.</span>
 					</Link>
@@ -120,6 +131,7 @@ const Signup = () => {
 	return (
 		<Layout>
 			<ToastContainer />
+			{isAuth() ? <Redirect to="/" /> : null}
 			{signupForm()}
 		</Layout>
 	);

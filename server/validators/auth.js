@@ -14,3 +14,19 @@ exports.userSigninValidator = [
 		.isLength({ min: 8, max: 20 })
 		.withMessage("password must be at least 6 character"),
 ];
+
+exports.forgotPasswordValidator = [
+	check("email")
+		.not()
+		.isEmpty()
+		.isEmail()
+		.withMessage("Must be a valid email address"),
+];
+
+exports.resetPasswordValidator = [
+	check("newPassword")
+		.not()
+		.isEmpty()
+		.isLength({ min: 8 })
+		.withMessage("Password must be at least  8 characters long"),
+];

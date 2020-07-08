@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, Redirect } from "react-router-dom";
 import Layout from "./../core/Layout";
 import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { authenticate, isAuth } from "./helpers";
 
-const Signin = () => {
+const Signin = ({ history }) => {
 	const [values, setValues] = useState({
 		email: "alifzulkifeli@gmail.com",
 		password: "aiman987",
@@ -13,6 +14,7 @@ const Signin = () => {
 	});
 
 	const { email, password, buttonText } = values;
+
 	const handleChange = (input) => (event) => {
 		setValues({ ...values, [input]: event.target.value });
 	};
@@ -27,14 +29,18 @@ const Signin = () => {
 		})
 			.then((response) => {
 				console.log(response);
-				setValues({
-					...values,
-					name: "",
-					email: "",
-					password: "",
-					buttonText: "Sign in",
+				authenticate(response, () => {
+					setValues({
+						...values,
+						email: "",
+						password: "",
+						buttonText: "Sign in",
+					});
+					//toast.success(`Hey ${response.data.user.name}. Welcome back`);
+					isAuth() && isAuth().role === "admin"
+						? history.push("/admin")
+						: history.push("/");
 				});
-				toast.success(`Hey ${response.data.user.name}. Welcome back`);
 			})
 			.catch((error) => {
 				console.log(error.response);
@@ -48,7 +54,6 @@ const Signin = () => {
 			<div className="container max-w-sm mx-auto flex-1 flex flex-col items-center justify-center px-2">
 				<div className="bg-white px-6 py-8 rounded shadow-md text-black w-full">
 					<h1 className="mb-8 text-3xl text-center">Sign in</h1>
-
 					<input
 						type="text"
 						className="block border border-grey-light w-full p-3 rounded mb-4"
@@ -57,7 +62,6 @@ const Signin = () => {
 						onChange={handleChange("email")}
 						value={email}
 					/>
-
 					<input
 						type="password"
 						className="block border border-grey-light w-full p-3 rounded mb-4"
@@ -66,15 +70,16 @@ const Signin = () => {
 						onChange={handleChange("password")}
 						value={password}
 					/>
-
 					<button
 						type="submit"
 						className="w-full text-center py-3 rounded bg-green-600 text-white hover:bg-green-700 focus:outline-none my-1"
 						onClick={handleSubmit}
 					>
 						{buttonText}
-					</button>
-
+					</button>{" "}
+					<Link to="/password/forgot">
+						<span className="text-gray-600  text-sm">forgot password?</span>
+					</Link>
 					<div className="text-center text-sm text-grey-dark mt-4">
 						By signing in, you agree to the
 						<a
@@ -108,6 +113,7 @@ const Signin = () => {
 	return (
 		<Layout>
 			<ToastContainer />
+			{isAuth() ? <Redirect to="/" /> : null}
 			{signupForm()}
 		</Layout>
 	);

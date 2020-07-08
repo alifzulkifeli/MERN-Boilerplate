@@ -24,11 +24,21 @@ const userSchema = new mongoose.Schema(
 		salt: String,
 		role: {
 			type: String,
-			default: "subscriber",
+			default: "user",
 		},
 		resetPasswordLink: {
-			data: String,
+			type: String,
 			default: "",
+		},
+		picture: {
+			type: String,
+			default: function () {
+				return (
+					"https://gravatar.com/avatar/" +
+					crypto.createHash("md5").update(this.email).digest("hex") +
+					"?s=200&d=retro"
+				);
+			},
 		},
 	},
 	{ timestamps: true }
