@@ -301,7 +301,7 @@ exports.facebookLogin = (req, res) => {
 	console.log(req.body);
 	const { userID, accessToken } = req.body;
 
-	const url = `https://graph.facebook.com/v2.11/${userID}/?fields=id,name,email&access_token=${accessToken}`;
+	const url = `https://graph.facebook.com/v2.11/${userID}/?fields=id,name,email,picture&access_token=${accessToken}`;
 
 	return fetch(url, {
 		method: "GET",
@@ -309,10 +309,12 @@ exports.facebookLogin = (req, res) => {
 		.then((response) => response.json())
 		.then((response) => {
 			console.log(response);
+			const picture = `http://graph.facebook.com/${response.id}/picture?type=square`;
 			const { email, name } = response;
 
 			User.findOne({ email }).exec((err, user) => {
 				// if user exist
+
 				if (user) {
 					if (user.picture !== picture) {
 						user.picture = picture;
@@ -353,9 +355,9 @@ exports.facebookLogin = (req, res) => {
 					user = new User({ name, email, password, picture });
 					user.save((err, data) => {
 						if (err) {
-							console.log("error on logging google save", err);
+							console.log("error on logging facebook save", err);
 							return res.status(400).json({
-								error: "user signup error with google",
+								error: "user signup error with facebook",
 							});
 						}
 						const token = jwt.sign({ _id: data._id }, process.env.JWT_SECRET, {
