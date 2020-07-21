@@ -5,12 +5,14 @@ import axios from "axios";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { authenticate, isAuth } from "./helpers";
+import Google from "./Google";
+import Facebook from "./Facebook";
 
 const Signin = ({ history }) => {
 	const [values, setValues] = useState({
 		email: "alifzulkifeli@gmail.com",
 		password: "aiman987",
-		buttonText: "Sign In",
+		buttonText: "Log In",
 	});
 
 	const { email, password, buttonText } = values;
@@ -19,9 +21,17 @@ const Signin = ({ history }) => {
 		setValues({ ...values, [input]: event.target.value });
 	};
 
+	const informParent = (response) => {
+		authenticate(response, () => {
+			//toast.success(`Hey ${response.data.user.name}. Welcome back`);
+			isAuth() && isAuth().role === "admin"
+				? history.push("/admin")
+				: history.push("/");
+		});
+	};
 	const handleSubmit = (event) => {
 		event.preventDefault();
-		setValues({ ...values, buttonText: "Signing in..." });
+		setValues({ ...values, buttonText: "Procssing..." });
 		axios({
 			method: "POST",
 			url: `${process.env.REACT_APP_API}/signin`,
@@ -34,7 +44,7 @@ const Signin = ({ history }) => {
 						...values,
 						email: "",
 						password: "",
-						buttonText: "Sign in",
+						buttonText: "Log in",
 					});
 					//toast.success(`Hey ${response.data.user.name}. Welcome back`);
 					isAuth() && isAuth().role === "admin"
@@ -53,7 +63,10 @@ const Signin = ({ history }) => {
 		<div className="bg-grey-lighter h-screen flex flex-col">
 			<div className="container max-w-sm mx-auto flex-1 flex flex-col items-center justify-center px-2">
 				<div className="bg-white px-6 py-8 rounded shadow-md text-black w-full">
-					<h1 className="mb-8 text-3xl text-center">Sign in</h1>
+					<h1 className="mb-8 text-3xl text-center">Log In</h1>
+					<Google informParent={informParent} />
+					<Facebook informParent={informParent} />
+					<hr className=" m-6" />
 					<input
 						type="text"
 						className="block border border-grey-light w-full p-3 rounded mb-4"

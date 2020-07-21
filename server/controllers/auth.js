@@ -2,6 +2,8 @@ const User = require("../models/user");
 const jwt = require("jsonwebtoken");
 const expressJwt = require("express-jwt");
 const _ = require("lodash");
+const { OAuth2Client } = require("google-auth-library");
+const fetch = require("node-fetch");
 
 const sgMail = require("@sendgrid/mail");
 sgMail.setApiKey(process.env.SENDGRID_API_KEY);
@@ -211,4 +213,161 @@ exports.resetPassword = (req, res) => {
 			}
 		);
 	}
+};
+
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+exports.googleLogin = (req, res) => {
+	const { idToken } = req.body;
+
+	client
+		.verifyIdToken({ idToken, audience: process.env.GOOGLE_CLIENT_ID })
+		.then((response) => {
+			const { email_verified, name, email, picture } = response.payload;
+			if (email_verified) {
+				User.findOne({ email }).exec((err, user) => {
+					if (user) {
+						if (user.picture !== picture) {
+							user.picture = picture;
+							user.save((err, data) => {
+								if (err) {
+									console.log("error on mergigng data", err);
+									return res.status(400).json({
+										error: "error merging data",
+									});
+								}
+								const token = jwt.sign(
+									{ _id: data._id },
+									process.env.JWT_SECRET,
+									{
+										expiresIn: "7d",
+									}
+								);
+								const { _id, email, name, role, picture } = data;
+								return res.json({
+									token,
+									user: { _id, email, name, role, picture },
+								});
+							});
+						} else {
+							const token = jwt.sign(
+								{ _id: user._id },
+								process.env.JWT_SECRET,
+								{
+									expiresIn: "7d",
+								}
+							);
+							const { _id, email, name, role, picture } = user;
+
+							return res.json({
+								token,
+								user: { _id, email, name, role, picture },
+							});
+						}
+						//if user is noe exist
+					} else {
+						let password = email + process.env.JWT_SECRET;
+						user = new User({ name, email, password, picture });
+						user.save((err, data) => {
+							if (err) {
+								console.log("error on logging google save", err);
+								return res.status(400).json({
+									error: "user signup error with google",
+								});
+							}
+							const token = jwt.sign(
+								{ _id: data._id },
+								process.env.JWT_SECRET,
+								{
+									expiresIn: "7d",
+								}
+							);
+							const { _id, email, name, role, picture } = data;
+							return res.json({
+								token,
+								user: { _id, email, name, role, picture },
+							});
+						});
+					}
+				});
+			} else {
+				return res.status(400).json({
+					error: "google login failed, try again",
+				});
+			}
+		});
+};
+
+exports.facebookLogin = (req, res) => {
+	console.log(req.body);
+	const { userID, accessToken } = req.body;
+
+	const url = `https://graph.facebook.com/v2.11/${userID}/?fields=id,name,email&access_token=${accessToken}`;
+
+	return fetch(url, {
+		method: "GET",
+	})
+		.then((response) => response.json())
+		.then((response) => {
+			console.log(response);
+			const { email, name } = response;
+
+			User.findOne({ email }).exec((err, user) => {
+				// if user exist
+				if (user) {
+					if (user.picture !== picture) {
+						user.picture = picture;
+						user.save((err, data) => {
+							if (err) {
+								console.log("error on mergigng data", err);
+								return res.status(400).json({
+									error: "error merging data",
+								});
+							}
+							const token = jwt.sign(
+								{ _id: data._id },
+								process.env.JWT_SECRET,
+								{
+									expiresIn: "7d",
+								}
+							);
+							const { _id, email, name, role, picture } = data;
+							return res.json({
+								token,
+								user: { _id, email, name, role, picture },
+							});
+						});
+					} else {
+						const token = jwt.sign({ _id: user._id }, process.env.JWT_SECRET, {
+							expiresIn: "7d",
+						});
+						const { _id, email, name, role, picture } = user;
+
+						return res.json({
+							token,
+							user: { _id, email, name, role, picture },
+						});
+					}
+					//if user is noe exist
+				} else {
+					let password = email + process.env.JWT_SECRET;
+					user = new User({ name, email, password, picture });
+					user.save((err, data) => {
+						if (err) {
+							console.log("error on logging google save", err);
+							return res.status(400).json({
+								error: "user signup error with google",
+							});
+						}
+						const token = jwt.sign({ _id: data._id }, process.env.JWT_SECRET, {
+							expiresIn: "7d",
+						});
+						const { _id, email, name, role, picture } = data;
+						return res.json({
+							token,
+							user: { _id, email, name, role, picture },
+						});
+					});
+				}
+			});
+		});
 };

@@ -117,7 +117,7 @@ h-full"
 												onClick={handleDropdownClick}
 												className="h-full w-full rounded-full mx-auto cursor-pointer"
 												src={isAuth().picture}
-												alt="profile woman"
+												alt="profile picture"
 											/>
 										</div>
 									</span>
